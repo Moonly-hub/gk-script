@@ -3,35 +3,35 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
     Name = "Moonly v2",
-    Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+    Icon = 0,
     LoadingTitle = "Rayfield Interface Suite",
     LoadingSubtitle = "By ken",
-    Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+    Theme = "Default",
 
     DisableRayfieldPrompts = false,
     DisableBuildWarnings = false,
 
     ConfigurationSaving = {
         Enabled = true,
-        FolderName = nil, -- Create a custom folder for your hub/game
+        FolderName = nil,
         FileName = "Big Hub"
     },
 
     Discord = {
-        Enabled = true, -- Prompt the user to join your Discord server if their executor supports it
-        Invite = "tgDgHgyBEz", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ABCD would be ABCD
-        RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+        Enabled = true,
+        Invite = "tgDgHgyBEz",
+        RememberJoins = true
     },
 
-    KeySystem = false, -- Set this to true to use our key system
+    KeySystem = false,
     KeySettings = {
         Title = "Ken system",
         Subtitle = "Key System",
-        Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
-        FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
-        SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
-        GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
-        Key = {"Hello", "nigga"} -- List of keys that will be accepted by the system
+        Note = "No method of obtaining the key is provided",
+        FileName = "Key",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = {"Hello", "nigga"}
     }
 })
 
@@ -45,26 +45,40 @@ local Divider = MainTab:CreateDivider()
 local autoGrabBallConnection = nil
 local originalPosition = nil -- Store the original position of the player
 local grabRange = 70 -- Range to detect the ball
+local teleportSpeed = 50 -- Speed at which the character moves back to the original position
 
 -- Function to reset the ball's data
 local function resetBallData(ball)
     if ball then
-        -- Reset any custom properties or data the ball might have
         if ball:FindFirstChild("Owner") then
             ball.Owner.Value = nil
         end
         if ball:FindFirstChild("Pickable") then
-            ball.Pickable.Value = true -- Make the ball pickable again
+            ball.Pickable.Value = true
         end
 
-        -- Reset velocity or position if necessary
         ball.AssemblyLinearVelocity = Vector3.zero
         ball.AssemblyAngularVelocity = Vector3.zero
-
         print("Ball data has been reset.")
     else
         warn("No ball to reset.")
     end
+end
+
+-- Function to interpolate the player's movement
+local function smoothTeleport(character, targetCFrame, speed)
+    local rootPart = character:WaitForChild("HumanoidRootPart")
+    local startCFrame = rootPart.CFrame
+    local startTime = tick()
+
+    -- Lerp movement over time
+    while (rootPart.Position - targetCFrame.Position).Magnitude > 0.1 do
+        local alpha = math.min((tick() - startTime) * speed, 1)
+        rootPart.CFrame = startCFrame:Lerp(targetCFrame, alpha)
+        task.wait()
+    end
+
+    rootPart.CFrame = targetCFrame
 end
 
 -- Function to automatically grab the ball and teleport back
@@ -75,7 +89,6 @@ local function grabBallAutomatically()
     local ball = workspace:FindFirstChild("Football")
 
     if ball then
-        -- Check if the ball is pickable
         local isPickable = true
         if ball:FindFirstChild("Pickable") then
             isPickable = ball.Pickable.Value
@@ -85,25 +98,23 @@ local function grabBallAutomatically()
             local ballPosition = ball.Position
             local distance = (ballPosition - rootPart.Position).Magnitude
 
-            -- If the ball is within range (e.g., 70 studs), teleport to it and grab it
             if distance < grabRange then
                 if not originalPosition then
                     originalPosition = rootPart.CFrame -- Save original position
                 end
 
-                -- Teleport to the ball
-                rootPart.CFrame = ball.CFrame + Vector3.new(0, 2, 0) -- Slightly above the ball
-                print("Teleported to ball!")
+                -- Smoothly move to the ball
+                smoothTeleport(character, ball.CFrame + Vector3.new(0, 2, 0), teleportSpeed)
+                print("Moved to the ball!")
 
                 -- Short delay for grabbing the ball
                 task.wait(0.05)
 
-                -- Teleport back to original position
-                rootPart.CFrame = originalPosition
-                print("Teleported back to original position!")
+                -- Smoothly move back to the original position
+                smoothTeleport(character, originalPosition, teleportSpeed)
+                print("Moved back to original position!")
             end
         else
-            -- Reset the ball's data if it's no longer pickable
             resetBallData(ball)
         end
     else
@@ -113,21 +124,19 @@ end
 
 -- Auto Grab Toggle
 MainTab:CreateToggle({
-    Name = "Auto Grab Ball (Teleport Character)",
-    CurrentValue = false, -- Start with the feature disabled
+    Name = "Auto Grab Ball (Smooth Movement)",
+    CurrentValue = false,
     Flag = "AutoGrabToggle",
     Callback = function(Value)
         if Value then
-            -- Start checking for the ball every frame
             autoGrabBallConnection = game:GetService("RunService").Heartbeat:Connect(function()
                 grabBallAutomatically()
             end)
         else
-            -- Disconnect the auto grab ball connection when the toggle is turned off
             if autoGrabBallConnection then
                 autoGrabBallConnection:Disconnect()
                 autoGrabBallConnection = nil
-                originalPosition = nil -- Reset original position
+                originalPosition = nil
                 print("Auto Grab Ball stopped.")
             end
         end

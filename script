@@ -84,7 +84,7 @@ local function grabBallAutomatically()
             local distance = (ballPosition - rootPart.Position).Magnitude
 
             -- If the ball is within range (e.g., 10 studs), teleport it to the player
-            if distance < 10 then
+            if distance < 70 then
                 ball.CFrame = rootPart.CFrame
                 print("Football grabbed by player.")
             end

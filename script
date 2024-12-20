@@ -43,6 +43,8 @@ local Divider = MainTab:CreateDivider()
 
 -- Auto Grab Ball Variables and Functions
 local autoGrabBallConnection = nil
+local originalPosition = nil -- Store the original position of the player
+local grabRange = 70 -- Range to detect the ball
 
 -- Function to reset the ball's data
 local function resetBallData(ball)
@@ -65,7 +67,7 @@ local function resetBallData(ball)
     end
 end
 
--- Function to automatically grab the ball
+-- Function to automatically grab the ball and teleport back
 local function grabBallAutomatically()
     local player = game.Players.LocalPlayer
     local character = player.Character or player.CharacterAdded:Wait()
@@ -83,10 +85,22 @@ local function grabBallAutomatically()
             local ballPosition = ball.Position
             local distance = (ballPosition - rootPart.Position).Magnitude
 
-            -- If the ball is within range (e.g., 10 studs), teleport it to the player
-            if distance < 70 then
-                ball.CFrame = rootPart.CFrame
-                print("Football grabbed by player.")
+            -- If the ball is within range (e.g., 70 studs), teleport to it and grab it
+            if distance < grabRange then
+                if not originalPosition then
+                    originalPosition = rootPart.CFrame -- Save original position
+                end
+
+                -- Teleport to the ball
+                rootPart.CFrame = ball.CFrame + Vector3.new(0, 2, 0) -- Slightly above the ball
+                print("Teleported to ball!")
+
+                -- Short delay for grabbing the ball
+                task.wait(0.05)
+
+                -- Teleport back to original position
+                rootPart.CFrame = originalPosition
+                print("Teleported back to original position!")
             end
         else
             -- Reset the ball's data if it's no longer pickable
@@ -99,12 +113,12 @@ end
 
 -- Auto Grab Toggle
 MainTab:CreateToggle({
-    Name = "Auto Grab Ball (for goal keeper)",
+    Name = "Auto Grab Ball (Teleport Character)",
     CurrentValue = false, -- Start with the feature disabled
     Flag = "AutoGrabToggle",
     Callback = function(Value)
         if Value then
-            -- Start checking for the ball every 0.1 seconds
+            -- Start checking for the ball every frame
             autoGrabBallConnection = game:GetService("RunService").Heartbeat:Connect(function()
                 grabBallAutomatically()
             end)
@@ -113,6 +127,7 @@ MainTab:CreateToggle({
             if autoGrabBallConnection then
                 autoGrabBallConnection:Disconnect()
                 autoGrabBallConnection = nil
+                originalPosition = nil -- Reset original position
                 print("Auto Grab Ball stopped.")
             end
         end
